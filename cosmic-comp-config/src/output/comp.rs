@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs::OpenOptions, path::Path};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fs::OpenOptions,
+    path::Path,
+};
 use tracing::{error, warn};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -34,7 +38,7 @@ fn default_sync() -> AdaptiveSync {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OutputsConfig {
-    pub config: HashMap<Vec<OutputInfo>, Vec<OutputConfig>>,
+    pub config: HashMap<BTreeSet<OutputInfo>, Vec<OutputConfig>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]

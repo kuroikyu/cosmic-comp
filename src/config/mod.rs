@@ -34,7 +34,7 @@ pub use smithay::{
 };
 use std::{
     cell::{Ref, RefCell},
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap},
     fs::OpenOptions,
     io::Write,
     path::PathBuf,
@@ -413,13 +413,12 @@ impl Config {
         clock: &Clock<Monotonic>,
     ) -> anyhow::Result<()> {
         let outputs = output_state.outputs().collect::<Vec<_>>();
-        let mut infos = outputs
+        let infos = outputs
             .iter()
             .cloned()
             .map(Into::<crate::config::CompOutputInfo>::into)
             .map(|i| i.0)
-            .collect::<Vec<_>>();
-        infos.sort();
+            .collect::<BTreeSet<_>>();
 
         if let Some(configs) = self
             .dynamic_conf
@@ -594,7 +593,7 @@ impl Config {
         &mut self,
         outputs: impl Iterator<Item = impl std::borrow::Borrow<Output>>,
     ) {
-        let mut infos = outputs
+        let mut pairs = outputs
             .map(|o| {
                 let o = o.borrow();
                 (
@@ -607,8 +606,10 @@ impl Config {
                 )
             })
             .collect::<Vec<(OutputInfo, OutputConfig)>>();
-        infos.sort_by(|(a, _), (b, _)| a.cmp(b));
-        let (infos, configs) = infos.into_iter().unzip();
+        pairs.sort_by(|(a, _), (b, _)| a.cmp(b));
+        let (infos_vec, configs): (Vec<OutputInfo>, Vec<OutputConfig>) =
+            pairs.into_iter().unzip();
+        let infos: BTreeSet<OutputInfo> = infos_vec.into_iter().collect();
         self.dynamic_conf
             .outputs_mut()
             .config
