@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+use crate::EdidProduct;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap},
@@ -41,6 +42,25 @@ pub struct OutputsConfig {
     pub config: HashMap<BTreeSet<OutputInfo>, Vec<OutputConfig>>,
 }
 
+impl OutputsConfig {
+    pub fn match_configs(&self, infos: &BTreeSet<OutputInfo>) -> Option<&Vec<OutputConfig>> {
+        if let Some(exact_match) = self.config.get(infos) {
+            return Some(exact_match);
+        }
+        for (config_infos, configs) in &self.config {
+            if config_infos.len() == infos.len()
+                && config_infos
+                    .iter()
+                    .zip(infos)
+                    .all(|(config_info, info)| config_info.matches_info(info))
+            {
+                return Some(configs);
+            }
+        }
+        None
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct OutputConfig {
     pub mode: ((i32, i32), Option<u32>),
@@ -72,11 +92,21 @@ impl Default for OutputConfig {
     }
 }
 
+// Fields are ordered so derived order will prioritize edid, and consider connector last.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OutputInfo {
-    pub connector: String,
+    #[serde(default)]
+    pub edid: Option<EdidProduct>,
     pub make: String,
     pub model: String,
+    pub connector: String,
+}
+
+impl OutputInfo {
+    pub fn matches_info(&self, other_info: &Self) -> bool {
+        self.edid == other_info.edid
+            && (self.edid.is_some() || self.connector == other_info.connector)
+    }
 }
 
 pub fn load_outputs(path: Option<impl AsRef<Path>>) -> OutputsConfig {

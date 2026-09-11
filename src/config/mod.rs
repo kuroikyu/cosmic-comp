@@ -423,8 +423,7 @@ impl Config {
         if let Some(configs) = self
             .dynamic_conf
             .outputs()
-            .config
-            .get(&infos)
+            .match_configs(&infos)
             .filter(|configs| {
                 if configs
                     .iter()
@@ -1022,15 +1021,36 @@ fn config_changed(config: cosmic_config::Config, keys: Vec<String>, state: &mut 
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CompOutputInfo(OutputInfo);
+pub struct CompOutputInfo(pub OutputInfo);
 
 impl From<Output> for CompOutputInfo {
     fn from(o: Output) -> CompOutputInfo {
         let physical = o.physical_properties();
         CompOutputInfo(OutputInfo {
+            edid: o.edid().copied(),
             connector: o.name(),
             make: physical.make,
             model: physical.model,
         })
+    }
+}
+
+impl CompOutputInfo {
+    #[allow(dead_code)]
+    fn matches_output(&self, output: &Output) -> bool {
+        let output_edid = output.edid();
+        self.0.edid.as_ref() == output_edid
+            && (self.0.edid.is_some() || self.0.connector == output.name())
+    }
+
+    #[allow(dead_code)]
+    fn find_output_match<'a>(&self, outputs: &'a [Output]) -> Option<&'a Output> {
+        let matches: Vec<&Output> = outputs.iter().filter(|o| self.matches_output(o)).collect();
+        if matches.len() > 1 {
+            if let Some(output) = matches.iter().find(|o| o.name() == self.0.connector) {
+                return Some(*output);
+            }
+        }
+        matches.into_iter().next()
     }
 }
