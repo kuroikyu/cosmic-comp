@@ -104,8 +104,14 @@ pub struct OutputInfo {
 
 impl OutputInfo {
     pub fn matches_info(&self, other_info: &Self) -> bool {
-        self.edid == other_info.edid
-            && (self.edid.is_some() || self.connector == other_info.connector)
+        if self.edid == other_info.edid {
+            return self.edid.is_some() || self.connector == other_info.connector;
+        }
+        // Legacy migration: allow matching when one side has no EDID
+        // (upgrading from pre-EDID configs) via make/model/connector
+        self.make == other_info.make
+            && self.model == other_info.model
+            && self.connector == other_info.connector
     }
 }
 
